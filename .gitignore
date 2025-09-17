@@ -2,3 +2,4 @@
 /build/
 /csrc/doomgeneric/*.o
 /data/
+/.savegame/

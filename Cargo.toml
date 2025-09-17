@@ -1,0 +1,14 @@
+[package]
+name = "rustydoom"
+version = "0.1.0"
+edition = "2024"
+links = "doomgeneric"   # lets Cargo know we link a native lib
+
+[dependencies]
+winit = "0.30"
+softbuffer = "0.4"
+anyhow = "1"
+libc = "0.2"
+
+[build-dependencies]
+cc = "1.1"

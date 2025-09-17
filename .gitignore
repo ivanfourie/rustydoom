@@ -1,0 +1,4 @@
+/target
+/build/
+/csrc/doomgeneric/*.o
+/data/

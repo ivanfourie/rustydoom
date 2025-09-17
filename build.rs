@@ -9,14 +9,12 @@ fn main() {
     build.include("include");
     build.include("csrc/doomgeneric");
 
-    // Core engine + doomgeneric (NO SDL / NO audio backends)
+    // Core engine + doomgeneric 
     let core_files = [
-        // from SRC_DOOM, with .o -> .c, minus SDL+audio
         "dummy.c", "am_map.c", "doomdef.c", "doomstat.c", "dstrings.c",
         "d_event.c", "d_items.c", "d_iwad.c", "d_loop.c", "d_main.c",
         "d_mode.c", "d_net.c", "f_finale.c", "f_wipe.c", "g_game.c",
         "hu_lib.c", "hu_stuff.c", "info.c",
-        // keep these generic I_* that don’t bind SDL
         "i_endoom.c", "i_input.c", "i_scale.c", "i_system.c", "i_timer.c", "i_video.c",
         "memio.c", "m_argv.c", "m_bbox.c", "m_cheat.c", "m_config.c",
         "m_controls.c", "m_fixed.c", "m_menu.c", "m_misc.c", "m_random.c",
@@ -46,13 +44,7 @@ fn main() {
 
     // C flags
     build.flag_if_supported("-std=c11");
-    build.warnings(true);
-
-    // IMPORTANT: do NOT enable sound yet. The upstream Makefile uses -DFEATURE_SOUND.
-    // Remove any FEATURE_SOUND define to avoid pulling in SDL_mixer paths.
-    // If your vendored code supports a "no sound" define, you can add it here later, e.g.:
-    build.define("DISABLE_SOUND", None);
-    // or: build.define("DG_NO_SOUND", None);
+    build.warnings(false);
 
     build.compile("doomgeneric");
 }

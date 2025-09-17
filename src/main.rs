@@ -5,9 +5,15 @@ use std::ffi::CString;
 use std::num::NonZeroU32;
 use libc::{c_int, c_uint};
 
+use winit::dpi::LogicalSize;
+use winit::window::WindowAttributes;
 use winit::event::{Event, KeyEvent, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoop};
 use winit::keyboard::{Key, NamedKey};
+
+// Doom’s “native” framebuffer is 320×200, so these are nice multiples.
+pub const INITIAL_WIDTH:  u32 = 960;
+pub const INITIAL_HEIGHT: u32 = 600;
 
 fn main() -> anyhow::Result<()> {
     // Optional IWAD path; many builds will find it via DOOMWADDIR/cwd.
@@ -97,13 +103,74 @@ fn blit_center(dst: &mut [u32], dst_w: usize, dst_h: usize, src: &[u32], src_w: 
     }
 }
 
+/// Nearest-neighbor fit with aspect ratio preserved.
+/// dst: window backbuffer (row-major 0x00RRGGBB), size dw*dh
+/// src: Doom framebuffer (row-major), size sw*sh
+pub fn blit_nn_fit(dst: &mut [u32], dw: usize, dh: usize,
+                   src: &[u32], sw: usize, sh: usize) {
+    if dw == 0 || dh == 0 || sw == 0 || sh == 0 { return; }
+
+    // Choose target size that fits inside window and preserves aspect.
+    // Compare dw/sh vs dh/sw without floats.
+    let (tw, th) = if dw * sh <= dh * sw {
+        // limited by width
+        let tw = dw;
+        let th = (dw * sh) / sw;
+        (tw, th)
+    } else {
+        // limited by height
+        let th = dh;
+        let tw = (dh * sw) / sh;
+        (tw, th)
+    };
+
+    // Letterbox offsets
+    let x0 = (dw - tw) / 2;
+    let y0 = (dh - th) / 2;
+
+    // Clear to black
+    dst.fill(0x0000_0000);
+
+    // Fixed-point 16.16 stepping for nearest-neighbor
+    let x_step = ((sw as u32) << 16) / (tw as u32);
+    let y_step = ((sh as u32) << 16) / (th as u32);
+
+    for y in 0..th {
+        let sy = ((y as u32 * y_step) >> 16) as usize;
+        let src_row = &src[sy * sw .. (sy + 1) * sw];
+
+        let dst_row_start = (y0 + y) * dw + x0;
+        let dst_row = &mut dst[dst_row_start .. dst_row_start + tw];
+
+        let mut sx_fp: u32 = 0;
+        for dpx in dst_row.iter_mut() {
+            let sx = (sx_fp >> 16) as usize;
+            *dpx = src_row[sx];
+            sx_fp = sx_fp.wrapping_add(x_step);
+        }
+    }
+}
+
+
 pub(crate) fn entry(event_loop: EventLoop<()>) {
     let app = winit_app::WinitAppBuilder::with_init(
         |elwt| {
-            let window = winit_app::make_window(elwt, |w| w);
+           // 1) Create window with an explicit initial size (logical, DPI-aware)
+            let window = winit_app::make_window(elwt, |attrs: WindowAttributes| {
+                attrs
+                    .with_title("RustyDoom")
+                    .with_inner_size(LogicalSize::new(
+                            INITIAL_WIDTH as f64,
+                            INITIAL_HEIGHT as f64,
+                    ))
+            });
+
+            // 2) Create softbuffer context
             let context = softbuffer::Context::new(window.clone()).unwrap();
+            
             (window, context)
         },
+        // 3) Create the surface AND perform an initial resize once
         |_elwt, (window, context)| softbuffer::Surface::new(context, window.clone()).unwrap(),
     )
     .with_event_handler(|(window, _context), surface, event, elwt| {
@@ -111,7 +178,7 @@ pub(crate) fn entry(event_loop: EventLoop<()>) {
         elwt.set_control_flow(ControlFlow::Wait);
 
         match event {
-            // Keep softbuffer in sync with window size.
+            // Keep surface size in sync.
             Event::WindowEvent { window_id, event: WindowEvent::Resized(size) }
                 if window_id == window.id() =>
             {
@@ -133,13 +200,13 @@ pub(crate) fn entry(event_loop: EventLoop<()>) {
                     return;
                 };
 
-                // 1) Advance game one tic.
+                // 1) Advance one tic.
                 unsafe { sys::raw::dg_tick() };
 
                 // 2) Get Doom’s framebuffer for this tic.
                 let Some((fb, fb_w, fb_h)) = fetch_doom_fb() else { return; };
 
-                // 3) Map the softbuffer backbuffer sized to the current window.
+                // 3) Map the backbuffer sized to the current window.
                 let size = window.inner_size();
                 let (Some(w), Some(h)) = (NonZeroU32::new(size.width), NonZeroU32::new(size.height)) else { return; };
                 // Note: we already resize on Resized; no need to call here unless you prefer to.
@@ -148,9 +215,9 @@ pub(crate) fn entry(event_loop: EventLoop<()>) {
                 let dst_h = h.get() as usize;
                 let dst: &mut [u32] = &mut backbuf;
 
-                // 4) Clear to black, then copy Doom’s image centered (no scaling yet).
-                dst.fill(0x0000_0000);
-                blit_center(dst, dst_w, dst_h, fb, fb_w, fb_h);
+                // 4) Scale + letterbox into the backbuffer
+                blit_nn_fit(dst, dst_w, dst_h, fb, fb_w, fb_h);
+                // blit_center(dst, dst_w, dst_h, fb, fb_w, fb_h); // no scaling
 
                 // 5) Present, then request another redraw to keep things animating.
                 backbuf.present().unwrap();

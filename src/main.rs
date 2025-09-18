@@ -1,6 +1,9 @@
 mod sys;
 mod winit_app;
 
+mod constants;
+use crate::constants::{APP_NAME, APP_VERSION, INITIAL_WIDTH, INITIAL_HEIGHT};
+
 use std::ffi::CString;
 use std::num::NonZeroU32;
 use libc::{c_int, c_uint};
@@ -11,15 +14,11 @@ use winit::event::{Event, KeyEvent, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoop};
 use winit::keyboard::{Key, NamedKey};
 
-// Doom’s “native” framebuffer is 320×200, so these are nice multiples.
-pub const INITIAL_WIDTH:  u32 = 960;
-pub const INITIAL_HEIGHT: u32 = 600;
-
 fn main() -> anyhow::Result<()> {
     // Optional IWAD path; many builds will find it via DOOMWADDIR/cwd.
     let iwad = std::env::args().nth(1).unwrap_or_default();
     let c_iwad = CString::new(iwad).unwrap();
-
+    
     // Boot DoomGeneric and do two warmup ticks.
     let rc = unsafe { sys::raw::dg_create_simple(c_iwad.as_ptr()) };
     if rc != 0 {
@@ -43,6 +42,10 @@ fn main() -> anyhow::Result<()> {
     // Create window + run the app.
     entry(EventLoop::new().unwrap());
     Ok(())
+}
+
+fn app_title() -> String {
+    format!("{} v{}", APP_NAME, APP_VERSION)
 }
 
 /// SAFETY NOTE:
@@ -158,7 +161,7 @@ pub(crate) fn entry(event_loop: EventLoop<()>) {
            // 1) Create window with an explicit initial size (logical, DPI-aware)
             let window = winit_app::make_window(elwt, |attrs: WindowAttributes| {
                 attrs
-                    .with_title("RustyDoom")
+                    .with_title(app_title())
                     .with_inner_size(LogicalSize::new(
                             INITIAL_WIDTH as f64,
                             INITIAL_HEIGHT as f64,

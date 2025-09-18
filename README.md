@@ -36,9 +36,9 @@ Controls are limited (close the window or press Esc to exit).
 The project is intentionally minimal so you can experiment and add features as you go.
 
 ## Next steps
-* Add nearest-neighbor scaling instead of black bars.
+* Add nearest-neighbor scaling instead of black bars. (done)
+* Map input events from winit into DoomGeneric. (wip)
 * Hook up sound (cpal, rodio, or another Rust audio crate).
-* Map input events from winit into DoomGeneric.
 * Try replacing softbuffer with wgpu or OpenGL later.
 * Use this project as a playground for Rust/C interop.
 

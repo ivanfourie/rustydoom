@@ -3,7 +3,7 @@ use std::marker::PhantomData;
 use std::rc::Rc;
 
 use winit::application::ApplicationHandler;
-use winit::event::{Event, WindowEvent};
+use winit::event::{Event, WindowEvent, DeviceEvent, DeviceId};
 use winit::event_loop::{ActiveEventLoop, EventLoop};
 use winit::window::{Window, WindowAttributes, WindowId};
 
@@ -133,6 +133,22 @@ where
             state,
             surface_state,
             Event::WindowEvent { window_id, event },
+            event_loop,
+        );
+    }
+
+    fn device_event(
+        &mut self,
+        event_loop: &ActiveEventLoop,
+        device_id: DeviceId,
+        event: DeviceEvent,
+    ) {
+        let state = self.state.as_mut().unwrap();
+        let surface_state = self.surface_state.as_mut();
+        (self.event)(
+            state,
+            surface_state,
+            Event::DeviceEvent { device_id, event },
             event_loop,
         );
     }

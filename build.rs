@@ -37,8 +37,9 @@ fn main() {
         build.file(PathBuf::from("csrc/doomgeneric").join(f));
     }
 
-    // Rust-host platform shim (no SDL):
+    // Rust-host platform shim:
     build.file("csrc/platform/doomgeneric_rust.c");
+    build.file("csrc/platform/dg_host_bridge.c");
     // Backend stubs: no-op audio/joystick to satisfy I_* symbols
     build.file("csrc/platform/i_stubs.c");
 

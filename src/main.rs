@@ -66,46 +66,6 @@ fn fetch_doom_fb() -> Option<(&'static [u32], usize, usize)> {
     Some((fb, w, h))
 }
 
-/// Copy `src` into `dst` centered, without scaling (letterbox).
-/// Both are linear row-major u32 buffers.
-fn blit_center(dst: &mut [u32], dst_w: usize, dst_h: usize, src: &[u32], src_w: usize, src_h: usize) {
-    let copy_w = dst_w.min(src_w);
-    let copy_h = dst_h.min(src_h);
-    let x_off = (dst_w - copy_w) / 2;
-    let y_off = (dst_h - copy_h) / 2;
-
-    // Optional format fixup: set to true if Doom’s pixels aren’t 0x00RRGGBB.
-    const NEED_SWIZZLE: bool = false;
-
-    #[inline]
-    fn swizzle(px: u32) -> u32 {
-        if NEED_SWIZZLE {
-            // Example ARGB -> 0x00RRGGBB
-            let r = (px >> 16) & 0xFF;
-            let g = (px >> 8) & 0xFF;
-            let b = px & 0xFF;
-            (r << 16) | (g << 8) | b
-        } else {
-            px
-        }
-    }
-
-    for y in 0..copy_h {
-        let src_row = &src[y * src_w .. y * src_w + copy_w];
-        let dst_row_start = (y_off + y) * dst_w + x_off;
-        let dst_row = &mut dst[dst_row_start .. dst_row_start + copy_w];
-
-        // Fast path if formats match:
-        if !NEED_SWIZZLE {
-            dst_row.copy_from_slice(src_row);
-        } else {
-            for (d, &s) in dst_row.iter_mut().zip(src_row.iter()) {
-                *d = swizzle(s);
-            }
-        }
-    }
-}
-
 /// Nearest-neighbor fit with aspect ratio preserved.
 /// dst: window backbuffer (row-major 0x00RRGGBB), size dw*dh
 /// src: Doom framebuffer (row-major), size sw*sh

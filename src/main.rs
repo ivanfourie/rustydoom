@@ -4,6 +4,11 @@ mod winit_app;
 mod constants;
 use crate::constants::{APP_NAME, APP_VERSION, INITIAL_WIDTH, INITIAL_HEIGHT};
 
+mod cli;
+use cli:: { Cli, normalize_doom_args} ;
+use clap::Parser;
+use std::env;
+
 mod dg_io;
 use dg_io::{ DgIo, DoomHost };
 
@@ -15,7 +20,7 @@ use libc::{c_int, c_uint};
 use winit::dpi::LogicalSize;
 use winit::window:: {Window, WindowAttributes };
 use winit::event::{Event, KeyEvent, WindowEvent};
-use winit::event_loop::{ControlFlow, EventLoop, ActiveEventLoop};
+use winit::event_loop::{EventLoop, ActiveEventLoop};
 use winit::keyboard::{Key, NamedKey};
 
 struct State {
@@ -25,11 +30,14 @@ struct State {
 }
 
 fn main() -> anyhow::Result<()> {
+    let cli = Cli::parse_from(normalize_doom_args(env::args()));
+    
     // Optional IWAD path; many builds will find it via DOOMWADDIR/cwd.
-    let iwad = std::env::args().nth(1).unwrap_or_default();
-    let c_iwad = CString::new(iwad).unwrap();
+    let iwad_path = cli.iwad.unwrap_or_default();
+    let c_iwad = CString::new(iwad_path).unwrap();
     
     // Boot DoomGeneric and do two warmup ticks.
+    // TODO: Create and use an argc, argbv entry point for doomgeneric_Create(argc, argv)
     let rc = unsafe { sys::raw::dg_create_simple(c_iwad.as_ptr()) };
     if rc != 0 {
         anyhow::bail!("dg_create_simple failed: {}", rc);

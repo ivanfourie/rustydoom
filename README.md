@@ -29,7 +29,7 @@ That’s it - a minimal Rust shell wrapped around classic Doom.
 You need a Doom IWAD (e.g. `doom1.wad` or `doom2.wad`) in the working directory.
 
 ```bash
-cargo run --release -- /path/to/doom1.wad
+cargo run --release -- -iwad /path/to/doom1.wad
 ```
 
 Controls are limited (close the window or press Esc to exit).
@@ -38,6 +38,7 @@ The project is intentionally minimal so you can experiment and add features as y
 ## Next steps
 * Add nearest-neighbor scaling instead of black bars. (done)
 * Map input events from winit into DoomGeneric. (wip)
+* Map Doom CLI arguments from clap into DoomGeneric. (wip)
 * Hook up sound (cpal, rodio, or another Rust audio crate).
 * Try replacing softbuffer with wgpu or OpenGL later.
 * Use this project as a playground for Rust/C interop.
